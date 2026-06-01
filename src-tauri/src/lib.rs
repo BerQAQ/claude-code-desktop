@@ -3,11 +3,16 @@ use std::fs;
 use std::path::PathBuf;
 use tauri::Manager;
 
+mod chat;
+mod git;
+mod pty;
+
 const CLAUDE_DIR: &str = r"D:\claude_data\.claude";
 const SETTINGS_FILE: &str = r"D:\claude_data\.claude\settings.json";
 const SESSIONS_DIR: &str = r"D:\claude_data\.claude\sessions";
 const HISTORY_FILE: &str = r"D:\claude_data\.claude\history.jsonl";
 const BACKUPS_DIR: &str = r"D:\claude_data\.claude\backups";
+const FILE_HISTORY_DIR: &str = r"D:\claude_data\.claude\file-history";
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SessionInfo {
@@ -116,6 +121,11 @@ fn update_config(content: String) -> Result<String, String> {
         .map_err(|e| format!("写入失败: {}", e))?;
 
     Ok("配置已保存".into())
+}
+
+#[tauri::command]
+fn write_config(content: String) -> Result<String, String> {
+    update_config(content)
 }
 
 #[tauri::command]
@@ -331,6 +341,88 @@ fn get_session_detail(session_id: String) -> Result<SessionDetail, String> {
     })
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct FileVersion {
+    pub file_name: String,
+    pub full_path: String,
+    pub version_time: String,
+    pub size_bytes: u64,
+}
+
+#[tauri::command]
+fn get_git_diff(project_path: String) -> Result<String, String> {
+    let output = std::process::Command::new("git")
+        .args(["diff", "--stat", "-p"])
+        .current_dir(&project_path)
+        .output()
+        .map_err(|e| format!("执行 git 失败: {}", e))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        if stderr.contains("not a git repository") {
+            return Err("该项目不是 Git 仓库".into());
+        }
+        return Err(format!("git diff 出错: {}", stderr));
+    }
+
+    let diff = String::from_utf8_lossy(&output.stdout).to_string();
+    if diff.trim().is_empty() {
+        Ok("（无变更）".into())
+    } else {
+        Ok(diff)
+    }
+}
+
+#[tauri::command]
+fn get_file_history() -> Result<Vec<FileVersion>, String> {
+    let root = PathBuf::from(FILE_HISTORY_DIR);
+    let mut versions = Vec::new();
+
+    if !root.exists() {
+        return Ok(versions);
+    }
+
+    let entries = fs::read_dir(&root)
+        .map_err(|e| format!("读取文件历史目录失败: {}", e))?;
+
+    for entry in entries {
+        let entry = entry.map_err(|_| "读取条目失败".to_string())?;
+        let path = entry.path();
+
+        let modified = fs::metadata(&path)
+            .ok()
+            .and_then(|m| m.modified().ok())
+            .map(|t| {
+                chrono::DateTime::<chrono::Local>::from(t)
+                    .format("%Y-%m-%d %H:%M:%S")
+                    .to_string()
+            })
+            .unwrap_or_else(|| "未知".into());
+
+        let size = fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+
+        versions.push(FileVersion {
+            file_name: path
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string(),
+            full_path: path.to_string_lossy().to_string(),
+            version_time: modified,
+            size_bytes: size,
+        });
+    }
+
+    versions.sort_by(|a, b| b.version_time.cmp(&a.version_time));
+    Ok(versions)
+}
+
+#[tauri::command]
+fn get_file_version_content(file_path: String) -> Result<String, String> {
+    fs::read_to_string(&file_path)
+        .map_err(|e| format!("读取文件失败: {}", e))
+}
+
 #[tauri::command]
 fn launch_claude(path: String) -> Result<String, String> {
     let project_path = PathBuf::from(&path);
@@ -360,9 +452,18 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             read_config, read_config_raw,
-            backup_config, update_config,
+            backup_config, update_config, write_config,
             list_sessions, list_history,
             list_projects, scan_projects, get_session_detail, launch_claude,
+            pty::spawn_pty, pty::write_pty, pty::resize_pty, pty::kill_pty,
+            get_git_diff, get_file_history, get_file_version_content,
+            git::get_structured_diff, git::git_stage_file, git::git_unstage_file,
+            git::git_stage_all, git::git_unstage_all, git::git_commit, git::git_file_history,
+            git::open_file,
+            chat::send_message, chat::stop_stream,
+            chat::create_task, chat::delete_task, chat::rename_task,
+            chat::save_session_messages, chat::load_session_messages,
+            chat::get_chat_config,
         ])
         .setup(|app| {
             let data_dir = PathBuf::from(CLAUDE_DIR);

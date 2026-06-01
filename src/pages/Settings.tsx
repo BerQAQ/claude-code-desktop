@@ -27,7 +27,7 @@ export default function Settings() {
 
   const handleSave = async () => {
     try {
-      await invoke("write_config", { content: configText });
+      await invoke("update_config", { content: configText });
       setOriginalText(configText);
       setMessage({ type: "success", text: "配置已保存（已自动备份）" });
       setTimeout(() => setMessage(null), 3000);

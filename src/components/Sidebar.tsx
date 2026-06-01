@@ -1,11 +1,5 @@
 import { NavLink } from "react-router-dom";
-import {
-  FolderOpen,
-  MessageSquare,
-  Settings,
-  Home,
-  Bot,
-} from "lucide-react";
+import { FolderOpen, MessageSquare, Settings, Home, Bot } from "lucide-react";
 
 const navItems = [
   { to: "/", label: "首页", icon: Home },
@@ -16,49 +10,39 @@ const navItems = [
 
 export default function Sidebar() {
   return (
-    <aside
-      className="w-[280px] flex flex-col bg-slate-900 border-r border-slate-800 select-none"
-    >
-      {/* Logo 区域 */}
-      <div className="flex items-center gap-3 px-5 py-5 border-b border-slate-800">
-        <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-blue-600">
-          <Bot className="w-5 h-5 text-white" />
-        </div>
-        <div>
-          <h1 className="text-sm font-semibold text-slate-100">
-            Claude Code Desktop
-          </h1>
-          <p className="text-xs text-slate-500">v0.1.0</p>
-        </div>
-      </div>
+    <aside className="h-full w-full flex flex-col items-center bg-slate-900 border-r border-slate-800 select-none py-3 gap-1">
+      {/* Logo icon */}
+      <NavLink
+        to="/"
+        className="flex items-center justify-center w-9 h-9 rounded-lg bg-blue-600 hover:bg-blue-500 mb-2 transition-colors"
+        title="Claude Code Desktop"
+      >
+        <Bot className="w-5 h-5 text-white" />
+      </NavLink>
 
-      {/* 导航菜单 */}
-      <nav className="flex-1 px-3 py-4 space-y-1">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.to === "/"}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
-                isActive
-                  ? "bg-slate-800 text-slate-100"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-              }`
-            }
-          >
-            <item.icon className="w-4 h-4" />
-            <span>{item.label}</span>
-          </NavLink>
-        ))}
-      </nav>
+      {/* Nav items */}
+      {navItems.map((item) => (
+        <NavLink
+          key={item.to}
+          to={item.to}
+          end={item.to === "/"}
+          className={({ isActive }) =>
+            `flex items-center justify-center w-9 h-9 rounded-lg transition-colors ${
+              isActive
+                ? "bg-slate-800 text-blue-400"
+                : "text-slate-500 hover:text-slate-300 hover:bg-slate-800/50"
+            }`
+          }
+          title={item.label}
+        >
+          <item.icon className="w-4.5 h-4.5" />
+        </NavLink>
+      ))}
 
-      {/* 底部署名 */}
-      <div className="px-5 py-4 border-t border-slate-800">
-        <p className="text-xs text-slate-600">
-          基于 Tauri + React 构建
-        </p>
-      </div>
+      <div className="flex-1" />
+
+      {/* Version */}
+      <span className="text-[10px] text-slate-700 mb-1">v0.1</span>
     </aside>
   );
 }

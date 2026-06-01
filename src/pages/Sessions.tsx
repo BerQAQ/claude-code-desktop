@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { MessageSquare, Clock, Bot, ChevronRight, ArrowLeft, RefreshCw } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
@@ -33,7 +33,7 @@ export default function Sessions() {
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<SessionDetail | null>(null);
-  const [loadingDetail, setLoadingDetail] = useState(false);
+  const [_loadingDetail, setLoadingDetail] = useState(false);
 
   useEffect(() => { loadSessions(); }, []);
 
